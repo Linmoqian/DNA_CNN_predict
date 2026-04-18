@@ -1,0 +1,22 @@
+data_dir: data
+train: train.h5
+valid: valid.h5
+test: test.h5
+promoter_length: 20000
+halflife_features: 8
+one_hot_encoding:
+  A: 0
+  C: 1
+  G: 2
+  T: 3
+halflife_order:
+  - UTR5LEN
+  - CDSLEN
+  - INTRONLEN
+  - UTR3LEN
+  - UTR5GC
+  - CDSGC
+  - UTR3GC
+  - ORFEXONDENSITY
+num_classes: 2
+batch_size: 32
