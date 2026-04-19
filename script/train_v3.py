@@ -67,21 +67,29 @@ def load_hdf5(file_path: str):
     return promoter, halflife, labels
 
 
-def train_one_epoch(model, loader, criterion, optimizer, device):
+def train_one_epoch(model, loader, criterion, optimizer, device, scaler=None):
     model.train()
     total_loss, correct, total = 0.0, 0, 0
+    use_amp = scaler is not None and device.type == "cuda"
     for promoter, halflife, labels in loader:
         promoter, halflife, labels = (
             promoter.to(device),
             halflife.to(device),
             labels.to(device),
         )
-        outputs = model(promoter, halflife)
-        loss = criterion(outputs, labels)
-
         optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+        if use_amp:
+            with torch.amp.autocast("cuda"):
+                outputs = model(promoter, halflife)
+                loss = criterion(outputs, labels)
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
+        else:
+            outputs = model(promoter, halflife)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
 
         total_loss += loss.item() * labels.size(0)
         correct += outputs.argmax(1).eq(labels).sum().item()
@@ -153,11 +161,13 @@ def main():
     )
 
     train_ds = AugmentedDataset(train_p, train_h, train_l, augment=use_augment)
-    train_loader = DataLoader(train_ds, batch_size=32, shuffle=True)
-    valid_loader = DataLoader(TensorDataset(valid_p, valid_h, valid_l), batch_size=32)
-    test_loader = DataLoader(TensorDataset(test_p, test_h, test_l), batch_size=32)
+    batch_size = 128 if device.type == "cuda" else 32
+    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
+    valid_loader = DataLoader(TensorDataset(valid_p, valid_h, valid_l), batch_size=batch_size)
+    test_loader = DataLoader(TensorDataset(test_p, test_h, test_l), batch_size=batch_size)
     aug_tag = C.ok("开启") if use_augment else C.warn("关闭")
     print(f"数据增强: {aug_tag}  (反向互补 + 随机平移 + 随机遮蔽)")
+    print(f"Batch size: {C.bold(batch_size)}")
 
     # 模型
     model = GeneExpressTransformer(num_classes=2).to(device)
@@ -165,26 +175,32 @@ def main():
     print(f"模型: {C.hi('GeneExpressTransformer')}  参数量: {C.bold(f'{total_params:,}')}")
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=5e-5, weight_decay=1e-4)
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode="min", factor=0.5, patience=3
-    )
+    optimizer = optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-4)
+    scaler = torch.amp.GradScaler("cuda") if device.type == "cuda" else None
+    amp_tag = C.ok("开启") if scaler else C.warn("关闭")
+    print(f"混合精度 (AMP): {amp_tag}")
 
     # 训练
     num_epochs = 35 if use_augment else 25
+    scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(
+        optimizer, T_0=10, T_mult=2, eta_min=1e-6
+    )
     best_valid_loss = float("inf")
     patience = 8
     no_improve = 0
-    print(C.info(f"开始训练  共 {num_epochs} epochs  early stopping patience {patience}"))
+    print(
+        C.info(f"开始训练  共 {num_epochs} epochs  early stopping patience {patience}")
+        + f"  LR {C.hi('1e-4')}  Scheduler {C.hi('CosineWarmRestarts')}"
+    )
 
     for epoch in range(1, num_epochs + 1):
         train_loss, train_acc = train_one_epoch(
-            model, train_loader, criterion, optimizer, device
+            model, train_loader, criterion, optimizer, device, scaler
         )
         valid_loss, valid_acc, valid_auc, valid_f1 = evaluate(
             model, valid_loader, criterion, device
         )
-        scheduler.step(valid_loss)
+        scheduler.step(epoch)
         lr = optimizer.param_groups[0]["lr"]
 
         saved = ""
