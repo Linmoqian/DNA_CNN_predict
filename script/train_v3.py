@@ -1,7 +1,9 @@
 """GeneExpressTransformer 训练脚本。"""
 
 import argparse
+import csv
 import sys
+from datetime import datetime
 from pathlib import Path
 
 import h5py
@@ -161,7 +163,7 @@ def main():
     )
 
     train_ds = AugmentedDataset(train_p, train_h, train_l, augment=use_augment)
-    batch_size = 128 if device.type == "cuda" else 32
+    batch_size = 32
     train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
     valid_loader = DataLoader(TensorDataset(valid_p, valid_h, valid_l), batch_size=batch_size)
     test_loader = DataLoader(TensorDataset(test_p, test_h, test_l), batch_size=batch_size)
@@ -175,22 +177,23 @@ def main():
     print(f"模型: {C.hi('GeneExpressTransformer')}  参数量: {C.bold(f'{total_params:,}')}")
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-4)
+    optimizer = optim.Adam(model.parameters(), lr=5e-5, weight_decay=1e-4)
     scaler = torch.amp.GradScaler("cuda") if device.type == "cuda" else None
     amp_tag = C.ok("开启") if scaler else C.warn("关闭")
     print(f"混合精度 (AMP): {amp_tag}")
 
     # 训练
     num_epochs = 35 if use_augment else 25
-    scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(
-        optimizer, T_0=10, T_mult=2, eta_min=1e-6
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, mode="min", factor=0.5, patience=3
     )
     best_valid_loss = float("inf")
+    best_epoch = 0
     patience = 8
     no_improve = 0
     print(
         C.info(f"开始训练  共 {num_epochs} epochs  early stopping patience {patience}")
-        + f"  LR {C.hi('1e-4')}  Scheduler {C.hi('CosineWarmRestarts')}"
+        + f"  LR {C.hi('5e-5')}  Scheduler {C.hi('ReduceLROnPlateau')}"
     )
 
     for epoch in range(1, num_epochs + 1):
@@ -200,12 +203,13 @@ def main():
         valid_loss, valid_acc, valid_auc, valid_f1 = evaluate(
             model, valid_loader, criterion, device
         )
-        scheduler.step(epoch)
+        scheduler.step(valid_loss)
         lr = optimizer.param_groups[0]["lr"]
 
         saved = ""
         if valid_loss < best_valid_loss:
             best_valid_loss = valid_loss
+            best_epoch = epoch
             torch.save(model.state_dict(), data_dir / "modelv3_best.pt")
             saved = f"  {C.ok('saved')}"
             no_improve = 0
@@ -239,6 +243,31 @@ def main():
         f"AUC {C.bold(f'{test_auc:.4f}')}  "
         f"F1 {C.bold(f'{test_f1:.4f}')}"
     )
+
+    # 记录实验日志
+    lr_init = 5e-5
+    wd = 1e-4
+    log_dir = project_root / "logs"
+    log_dir.mkdir(exist_ok=True)
+    csv_path = log_dir / "experiments.csv"
+    header = [
+        "timestamp", "augment", "amp", "batch_size", "lr", "weight_decay",
+        "scheduler", "best_epoch", "final_epoch", "num_epochs",
+        "test_loss", "test_acc", "test_auc", "test_f1",
+    ]
+    row = [
+        datetime.now().strftime("%Y-%m-%d %H:%M"),
+        use_augment, scaler is not None, batch_size, lr_init, wd,
+        "ReduceLROnPlateau", best_epoch, epoch, num_epochs,
+        f"{test_loss:.4f}", f"{test_acc:.4f}", f"{test_auc:.4f}", f"{test_f1:.4f}",
+    ]
+    write_header = not csv_path.exists()
+    with open(csv_path, "a", newline="") as f:
+        writer = csv.writer(f)
+        if write_header:
+            writer.writerow(header)
+        writer.writerow(row)
+    print(C.ok(f"实验日志已保存到 {csv_path}"))
 
 
 if __name__ == "__main__":
