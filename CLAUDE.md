@@ -4,7 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-基于 CNN + 注意力机制的 DNA 序列基因表达预测模型。使用 GM12878 细胞系数据（hg19 坐标系），预测基因为高表达或低表达（二分类）。训练 10 个 epoch 后准确率约 81%。
+基于 CNN + Transformer 的 DNA 序列基因表达预测模型。使用 GM12878 细胞系数据（hg19 坐标系），预测基因为高表达或低表达（二分类）。
+
+## 模型版本
+
+| 版本 | 架构 | 参数量 | 测试 Acc | 文件 |
+|------|------|-------|---------|------|
+| v1 | CNN + Attention | 41M | 0.81 | model/modelv1.py |
+| v2 | 多尺度CNN + 空洞卷积 | 22K | 0.79 | model/modelv2.py |
+| **v3** | **CNN + 1层Transformer** | **22.5K** | **0.805** | model/modelv3.py |
+
+v3 为当前最优，核心发现：数据量仅 16K 样本时，过拟合是主要瓶颈，1 层 Transformer 比 2 层泛化更好。
 
 ## 目录结构
 
@@ -12,8 +22,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 DNA_CNN_predict/
 ├── data/          # 数据文件 + data.yaml 配置
 ├── docs/          # 文档（数据说明等）
-├── model/         # 模型定义（modelv1.py 为参考版本）
-├── script/        # 训练/评估脚本
+├── model/         # 模型定义（modelv1/v2/v3）
+├── script/        # 训练脚本（train_v1/v2/v3）
 └── utils/         # 工具函数
 ```
 
@@ -30,20 +40,21 @@ DNA_CNN_predict/
 
 ```bash
 # 需要先将 train.h5, valid.h5, test.h5 放入 data/ 目录
-python script/train.py
+python script/train_v3.py
 ```
 
-## Architecture
+## v3 Architecture (GeneExpressTransformer)
 
-参考版本: `model/modelv1.py`（原 start.py），核心组件:
+`model/modelv3.py`，22,514 参数：
 
-- **ConvModel**: CNN 模型，双分支输入
-  - promoter 分支: 2层 Conv1d(4→32→64) + BN + MaxPool + 注意力机制(sigmoid 加权)
-  - halflife 分支: 全连接(8→32)
-  - 融合层: cat(promoter_flat, halflife) → FC(→128) → Dropout(0.8) → FC(→2)
-- **训练流程**: Adam(lr=1e-4) + CrossEntropyLoss + ReduceLROnPlateau + 10 epochs + batch_size=32
-- **评估指标**: Accuracy, AUC, F1 Score
+- **CNN 前端**: 多尺度并行卷积(k=8/16/32, 各16通道) → Pool(8) → 融合Conv(48→32) → Pool(8)
+- **Token 压缩**: AdaptiveAvgPool1d(64) + 可学习位置编码(1, 64, 32)
+- **Transformer**: 1层 EncoderLayer(d_model=32, nhead=4, ff=64, dropout=0.1, gelu)
+- **Halflife 分支**: FC(8→32→32)
+- **分类头**: cat(promoter_GAP, halflife) → FC(64→32) → Dropout(0.5) → FC(32→2)
+
+训练配置: Adam(lr=5e-5, weight_decay=1e-4) + ReduceLROnPlateau + early stopping(patience=8) + seed=42
 
 ## Dependencies
 
-PyTorch, h5py, scikit-learn, numpy, matplotlib
+PyTorch, h5py, scikit-learn, numpy
