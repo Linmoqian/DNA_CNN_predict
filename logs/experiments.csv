@@ -1,2 +1,5 @@
 timestamp,augment,amp,batch_size,lr,weight_decay,scheduler,best_epoch,final_epoch,num_epochs,test_loss,test_acc,test_auc,test_f1
 2026-04-19 15:34,True,True,32,5e-05,0.0001,ReduceLROnPlateau,35,35,35,0.4310,0.8051,0.8051,0.8033
+2026-04-19 15:55,True,True,32,5e-05,0.0001,ReduceLROnPlateau,33,35,35,0.0000,0.8131,0.8131,0.8137
+2026-04-19 16:41,5,True,True,True,5e-05,0.0001,0.8051,0.8050,0.8068
+2026-04-19 17:14,True,True,32,5e-05,0.0001,ReduceLROnPlateau,33,35,35,0.0000,0.8131,0.8131,0.8137

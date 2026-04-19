@@ -176,7 +176,7 @@ def main():
     total_params = sum(p.numel() for p in model.parameters())
     print(f"模型: {C.hi('GeneExpressTransformer')}  参数量: {C.bold(f'{total_params:,}')}")
 
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
     optimizer = optim.Adam(model.parameters(), lr=5e-5, weight_decay=1e-4)
     scaler = torch.amp.GradScaler("cuda") if device.type == "cuda" else None
     amp_tag = C.ok("开启") if scaler else C.warn("关闭")
@@ -230,12 +230,26 @@ def main():
             print(C.warn(f"验证 Loss 连续 {patience} 轮未改善，提前停止"))
             break
 
-    # 测试
-    print(C.info("加载最佳模型，测试集评估"))
+    # 测试 (TTA: 正向 + 反向互补 logits 取平均)
+    print(C.info("加载最佳模型，TTA 测试集评估"))
     model.load_state_dict(torch.load(data_dir / "modelv3_best.pt", weights_only=True))
-    test_loss, test_acc, test_auc, test_f1 = evaluate(
-        model, test_loader, criterion, device
-    )
+    model.eval()
+    all_probs_tta, all_labels_tta = [], []
+    with torch.no_grad():
+        for promoter, halflife, labels in test_loader:
+            promoter, halflife = promoter.to(device), halflife.to(device)
+            logits_fwd = model(promoter, halflife)
+            logits_rc = model(promoter.flip(1).flip(2), halflife)
+            probs = torch.softmax(logits_fwd + logits_rc, dim=1)
+            all_probs_tta.extend(probs.cpu().numpy())
+            all_labels_tta.extend(labels.numpy())
+    tta_probs = np.array(all_probs_tta)
+    tta_labels = np.array(all_labels_tta)
+    tta_preds = tta_probs.argmax(1)
+    test_acc = accuracy_score(tta_labels, tta_preds)
+    test_auc = roc_auc_score(tta_labels, tta_preds)
+    test_f1 = f1_score(tta_labels, tta_preds)
+    test_loss = 0.0
     print(
         C.ok("测试完成")
         + f"  Loss {test_loss:.4f}  "
