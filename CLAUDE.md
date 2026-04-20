@@ -12,9 +12,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 |------|------|-------|---------|------|
 | v1 | CNN + Attention | 41M | 0.81 | model/modelv1.py |
 | v2 | 多尺度CNN + 空洞卷积 | 22K | 0.79 | model/modelv2.py |
-| **v3** | **CNN + 1层Transformer** | **22.5K** | **0.805** | model/modelv3.py |
+| **v3** | **CNN + 1层Transformer (d48)** | **45.7K** | **0.8131** | model/modelv3.py |
 
-v3 为当前最优，核心发现：数据量仅 16K 样本时，过拟合是主要瓶颈，1 层 Transformer 比 2 层泛化更好。
+核心发现：数据量仅 16K 样本时，过拟合是主要瓶颈。数据增强（+0.018）和 TTA（反向互补预测）是最有效的提升手段。
 
 ## 目录结构
 
@@ -22,9 +22,10 @@ v3 为当前最优，核心发现：数据量仅 16K 样本时，过拟合是主
 DNA_CNN_predict/
 ├── data/          # 数据文件 + data.yaml 配置
 ├── docs/          # 文档（数据说明等）
+├── logs/          # 实验日志（experiments.csv, fold checkpoints）
 ├── model/         # 模型定义（modelv1/v2/v3）
 ├── script/        # 训练脚本（train_v1/v2/v3）
-└── utils/         # 工具函数
+└── utils/         # 工具函数（augment.py）
 ```
 
 ## Data
@@ -40,21 +41,39 @@ DNA_CNN_predict/
 
 ```bash
 # 需要先将 train.h5, valid.h5, test.h5 放入 data/ 目录
-python script/train_v3.py
+python script/train_v3.py              # 增强 + AMP + Label Smoothing + TTA
+python script/train_v3.py --no-augment  # 无增强基线
+python script/xai_analyze.py           # XAI 可解释性分析（DeepLIFT + 注意力 + 6张图表）
 ```
 
 ## v3 Architecture (GeneExpressTransformer)
 
-`model/modelv3.py`，22,514 参数：
+`model/modelv3.py`，45,674 参数：
 
-- **CNN 前端**: 多尺度并行卷积(k=8/16/32, 各16通道) → Pool(8) → 融合Conv(48→32) → Pool(8)
-- **Token 压缩**: AdaptiveAvgPool1d(64) + 可学习位置编码(1, 64, 32)
-- **Transformer**: 1层 EncoderLayer(d_model=32, nhead=4, ff=64, dropout=0.1, gelu)
-- **Halflife 分支**: FC(8→32→32)
-- **分类头**: cat(promoter_GAP, halflife) → FC(64→32) → Dropout(0.5) → FC(32→2)
+- **CNN 前端**: 多尺度并行卷积(k=8/16/32, 各24通道) → Pool(8) → 融合Conv(72→48) → Pool(8)
+- **Token 压缩**: AdaptiveAvgPool1d(64) + 可学习位置编码(1, 64, 48)
+- **Transformer**: 1层 EncoderLayer(d_model=48, nhead=4, ff=96, dropout=0.1, gelu)
+- **Halflife 分支**: FC(8→48→48)
+- **分类头**: cat(promoter_GAP, halflife) → FC(96→48) → Dropout(0.5) → FC(48→2)
 
-训练配置: Adam(lr=5e-5, weight_decay=1e-4) + ReduceLROnPlateau + early stopping(patience=8) + seed=42
+## 训练配置
+
+- **优化器**: Adam(lr=5e-5, weight_decay=1e-4)
+- **调度器**: ReduceLROnPlateau(mode=min, factor=0.5, patience=3)
+- **早停**: patience=8, max 35 epochs
+- **数据增强**: 反向互补(50%) + 随机平移(±200bp) + 随机遮蔽(1%)
+- **Label Smoothing**: 0.1
+- **AMP**: 混合精度训练（GPU 自动启用）
+- **TTA**: 测试时正向+反向互补 logits 取平均
+- **seed**: 42
+
+## 已验证无效的方法（16K样本下）
+
+- K-Fold 集成：每折样本更少，反而降低性能
+- SWA 随机权重平均：小样本下效果不佳
+- Mixup 样本插值：进一步稀释训练信号
+- 大 batch(128) + CosineWarmRestarts：步数不足 + LR 衰减过快
 
 ## Dependencies
 
-PyTorch, h5py, scikit-learn, numpy
+PyTorch, h5py, scikit-learn, numpy, captum, seaborn, scipy, statsmodels, logomaker

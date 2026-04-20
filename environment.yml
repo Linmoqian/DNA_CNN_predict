@@ -1,0 +1,20 @@
+name: dna-cnn
+channels:
+  - pytorch
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.12
+  - pytorch>=2.0
+  - torchvision
+  - h5py>=3.0
+  - scikit-learn>=1.0
+  - numpy
+  - scipy>=1.10
+  - pandas
+  - matplotlib>=3.7
+  - seaborn>=0.13
+  - statsmodels>=0.14
+  - pip:
+    - captum>=0.7.0
+    - logomaker>=0.8

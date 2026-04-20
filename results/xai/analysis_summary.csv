@@ -1,0 +1,10 @@
+metric,value
+n_high,496
+n_low,494
+mean_attr_high,-0.000084
+mean_attr_low,-0.000058
+tss_mean_attr_high,0.000777
+tss_mean_attr_low,0.000351
+n_key_regions,2230
+top_region,9775-9781
+top_region_mean_score,0.100360
