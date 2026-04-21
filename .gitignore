@@ -3,6 +3,8 @@ __pycache__/
 .ipynb_checkpoints/
 data/*.h5
 data/*.zip
+data/encode/*.bigWig
+data/encode/*.gtf.gz
 *.pt
 *.pth
 output/
