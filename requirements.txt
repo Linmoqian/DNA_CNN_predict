@@ -1,0 +1,19 @@
+# Core
+torch>=2.0
+h5py>=3.0
+numpy
+scikit-learn>=1.0
+scipy>=1.10
+pandas
+
+# Visualization
+matplotlib>=3.7
+seaborn>=0.13
+logomaker>=0.8
+
+# XAI
+captum>=0.7.0
+statsmodels>=0.14
+
+# ENCODE data processing (optional)
+pyBigWig>=0.3
