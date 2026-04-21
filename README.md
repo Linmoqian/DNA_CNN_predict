@@ -1,5 +1,7 @@
 # DNA_CNN_predict
 
+**[English](README_EN.md)**
+
 基于 CNN + Transformer 的 DNA 启动子序列基因表达预测模型。使用 GM12878 细胞系数据（hg19 坐标系），预测基因为高表达或低表达（二分类）。通过 4 个版本的迭代优化，最终模型（v4）以 96.8K 参数达到 82.74% 测试准确率。
 
 ## 模型版本
@@ -108,7 +110,7 @@ DNA_CNN_predict/
 ├── logs/          # 实验日志
 ├── model/         # 模型定义
 ├── results/       # 实验结果(XAI图表、CSV)
-├── script/        
+├── script/
 └── utils/         # 工具函数
 ```
 
