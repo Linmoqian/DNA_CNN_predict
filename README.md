@@ -17,17 +17,9 @@
 
 ### 1. 安装依赖
 
-**Conda（推荐）**：
-
 ```bash
 conda env create -f environment.yml
 conda activate dna-cnn
-```
-
-**pip**：
-
-```bash
-pip install -r requirements.txt
 ```
 
 ### 2. 准备数据
@@ -72,18 +64,10 @@ python script/xai_analyze.py                    # v3 DeepLIFT + 注意力分析
 python script/xai_analyze_v4.py --features all  # v4 XAI + ENCODE 通道贡献
 ```
 
-### 5. 生成论文图表
-
-```bash
-python script/generate_paper_figures.py         # 输出到 docs/paper_figures/
-```
-
 ### 一键运行
 
 ```bash
 bash run_all.sh              # 完整流程 (数据校验 → v3 → ENCODE → v4 → XAI → 图表)
-bash run_all.sh --quick      # 仅 v3 基线
-bash run_all.sh --step 4     # 从 v4 训练开始
 ```
 
 ## 代表性成果
@@ -106,8 +90,6 @@ DeepLIFT 归因分析显示模型学习到的关键区域与已知调控元件�
 
 ![全局归因](paper/figures/fig_global_attribution.png)
 
-![TSS 区域](paper/figures/fig_tss_zoom.png)
-
 ![方法验证](paper/figures/fig_dl_ig_correlation.png)
 
 ## 数据集
@@ -122,20 +104,14 @@ DeepLIFT 归因分析显示模型学习到的关键区域与已知调控元件�
 
 ```
 DNA_CNN_predict/
-├── data/          # 数据文件 + data.yaml + epigenomic.pt
-├── docs/          # 论文(paper.md) + 图表 + XAI报告
-├── logs/          # 实验日志(experiments.csv)
-├── model/         # 模型定义(v1~v4 + XAI变体)
-├── paper/         # 独立论文目录(paper.md + figures/)
+├── data/          # 数据文件
+├── logs/          # 实验日志
+├── model/         # 模型定义
 ├── results/       # 实验结果(XAI图表、CSV)
-├── script/        # 训练/分析/数据准备脚本
-└── utils/         # 工具函数(增强/特征/下载/XAI)
+├── script/        
+└── utils/         # 工具函数
 ```
 
 ## 论文
 
-完整论文见 [`paper/paper.md`](paper/paper.md)，包含 8 个章节、10 张图表、21 篇参考文献（GB/T 7714 格式）。
-
-## Dependencies
-
-PyTorch >= 2.0, h5py >= 3.0, scikit-learn >= 1.0, numpy, scipy >= 1.10, pandas, matplotlib >= 3.7, seaborn >= 0.13, statsmodels >= 0.14, captum >= 0.7.0, logomaker >= 0.8, pyBigWig >= 0.3
+完整内容见 [`paper/paper.md`](paper/paper.md)
