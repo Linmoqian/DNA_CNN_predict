@@ -1,119 +1,121 @@
 # DNA_CNN_predict
 
-**[English](README_EN.md)**
+**[中文](README_CN.md)**
 
-基于 CNN + Transformer 的 DNA 启动子序列基因表达预测模型。使用 GM12878 细胞系数据（hg19 坐标系），预测基因为高表达或低表达（二分类）。通过 4 个版本的迭代优化，最终模型（v4）以 96.8K 参数达到 82.74% 测试准确率。
+A lightweight CNN-Transformer hybrid model for predicting gene expression from DNA promoter sequences. Using GM12878 cell line data (hg19 coordinates) to classify genes as high or low expression (binary). Through 4 iterations, the final model (v4) achieves 82.74% test accuracy with only 96.8K parameters.
 
-## 模型版本
+## Model Versions
 
-| 版本 | 架构 | 参数量 | 测试 Acc | 文件 |
-|------|------|--------|---------|------|
+| Version | Architecture | Parameters | Test Acc | File |
+|---------|-------------|------------|---------|------|
 | v1 | CNN + Attention | 41M | 0.81 | `model/modelv1.py` |
-| v2 | 多尺度CNN + 空洞卷积 | 22K | 0.79 | `model/modelv2.py` |
-| v3 | CNN + 1层Transformer | 45.7K | 0.8131 | `model/modelv3.py` |
-| **v4** | **三分支 (promoter+halflife+epigenomic)** | **96.8K** | **0.8274** | `model/modelv4.py` |
+| v2 | Multi-scale CNN + Dilated Conv | 22K | 0.79 | `model/modelv2.py` |
+| v3 | CNN + 1-layer Transformer | 45.7K | 0.8131 | `model/modelv3.py` |
+| **v4** | **Three-branch (promoter+halflife+epigenomic)** | **96.8K** | **0.8274** | `model/modelv4.py` |
 
-核心发现：数据量仅 16K 样本时，过拟合是主要瓶颈。轻量化设计（96.8K 参数）优于大模型（41M），ENCODE 表观信号贡献 +2.9% 准确率。
+Key finding: With only 16K samples, overfitting is the main bottleneck. Lightweight design (96.8K params) outperforms large models (41M), and ENCODE epigenomic signals contribute +2.9% accuracy.
 
-## 快速开始
+## Quick Start
 
-### 1. 安装依赖
+### 1. Install Dependencies
 
 ```bash
 conda env create -f environment.yml
 conda activate dna-cnn
 ```
 
-### 2. 准备数据
+### 2. Prepare Data
 
-从 AISCCC 数据库下载 GM12878 数据集：
+Download the GM12878 dataset from AISCCC:
 
 ```bash
-# 1. 访问 http://www.aisccc.cn/database/data-details?id=121 下载数据压缩包
-# 2. 解压并将 train.h5, valid.h5, test.h5 放入 data/ 目录
-# 3. 校验数据完整性
+# 1. Visit http://www.aisccc.cn/database/data-details?id=121 to download the dataset
+# 2. Extract and place train.h5, valid.h5, test.h5 into data/
+# 3. Verify data integrity
 python script/setup_data.py --check
 ```
 
-### 3. 训练模型
+### 3. Train Models
 
-**v3 基线**（无需额外数据）：
+**v3 baseline** (no extra data needed):
 
 ```bash
-python script/train_v3.py              # 增强 + AMP + Label Smoothing + TTA
-python script/train_v3.py --no-augment  # 无增强基线
+python script/train_v3.py              # Augmentation + AMP + Label Smoothing + TTA
+python script/train_v3.py --no-augment  # No augmentation baseline
 ```
 
-**v4 全特征**（需先准备 ENCODE 数据）：
+**v4 full features** (requires ENCODE data):
 
 ```bash
-# 准备 ENCODE 表观信号（下载 ~880MB bigWig + 提取特征 → data/epigenomic.pt）
+# Prepare ENCODE epigenomic signals (~880MB bigWig download → data/epigenomic.pt)
 python script/prepare_epigenomic.py
 
-# 预计算序列内在特征（GC/CpG → data/seq_features_*.pt）
+# Pre-compute sequence features (GC/CpG → data/seq_features_*.pt)
 python script/precompute_seq_features.py
 
-# 消融实验
-python script/train_v4.py --features baseline    # v3 等价基线
-python script/train_v4.py --features encode      # +ENCODE 表观信号
-python script/train_v4.py --features all         # 全特征（最佳）
+# Ablation study
+python script/train_v4.py --features baseline    # v3-equivalent baseline
+python script/train_v4.py --features encode      # +ENCODE epigenomic signals
+python script/train_v4.py --features all         # Full features (best)
 ```
 
-### 4. 可解释性分析
+### 4. Interpretability Analysis
 
 ```bash
-python script/xai_analyze.py                    # v3 DeepLIFT + 注意力分析
-python script/xai_analyze_v4.py --features all  # v4 XAI + ENCODE 通道贡献
+python script/xai_analyze.py                    # v3 DeepLIFT + attention analysis
+python script/xai_analyze_v4.py --features all  # v4 XAI + ENCODE channel contribution
 ```
 
-### 一键运行
+### One-Click Run
 
 ```bash
-bash run_all.sh              # 完整流程 (数据校验 → v3 → ENCODE → v4 → XAI → 图表)
+bash run_all.sh              # Full pipeline (data check → v3 → ENCODE → v4 → XAI → figures)
+bash run_all.sh --quick      # v3 baseline only
+bash run_all.sh --step 4     # Start from v4 training
 ```
 
-## 代表性成果
+## Key Results
 
-### 模型架构 — V4 三分支设计
+### Model Architecture — V4 Three-Branch Design
 
-![V4 架构](paper/figures/fig1_architecture_v4.png)
+![V4 Architecture](paper/figures/fig1_architecture_v4.png)
 
-### 消融实验
+### Ablation Study
 
-| 配置 | 特征组合 | 测试 Acc |
-|------|---------|---------|
+| Config | Features | Test Acc |
+|--------|----------|---------|
 | baseline | promoter + halflife | 0.7959 |
 | +ENCODE | baseline + H3K4me3/H3K27ac/DNase | 0.8252 |
-| **all** | **全特征** | **0.8274** |
+| **all** | **full features** | **0.8274** |
 
-### 可解释性分析
+### Interpretability Analysis
 
-DeepLIFT 归因分析显示模型学习到的关键区域与已知调控元件（TATA box、CAAT box）高度吻合，DeepLIFT 与 IG 相关系数 r = 0.92。
+DeepLIFT attribution reveals that key regions learned by the model align with known regulatory elements (TATA box, CAAT box). Cross-validation with Integrated Gradients yields r = 0.92.
 
-![全局归因](paper/figures/fig_global_attribution.png)
+![Global Attribution](paper/figures/fig_global_attribution.png)
 
-![方法验证](paper/figures/fig_dl_ig_correlation.png)
+![Method Validation](paper/figures/fig_dl_ig_correlation.png)
 
-## 数据集
+## Dataset
 
-- 来源：http://www.aisccc.cn/database/data-details?id=121
-- 格式：HDF5（train.h5, valid.h5, test.h5）
-- 内容：`gene_id`（Ensembl ID）、`halflife`（8维标准化特征）、`promoter`（20000bp one-hot DNA序列）、`label`（0=低表达, 1=高表达）
-- 编码：`{'A':0, 'C':1, 'G':2, 'T':3}`
-- 规模：训练集 16,215 样本 / 验证集 989 样本 / 测试集 990 样本
+- Source: http://www.aisccc.cn/database/data-details?id=121
+- Format: HDF5 (train.h5, valid.h5, test.h5)
+- Contents: `gene_id` (Ensembl ID), `halflife` (8-dim normalized features), `promoter` (20,000bp one-hot DNA sequence), `label` (0=low, 1=high expression)
+- Encoding: `{'A':0, 'C':1, 'G':2, 'T':3}`
+- Scale: Train 16,215 / Valid 989 / Test 990 samples
 
-## 目录结构
+## Project Structure
 
 ```
 DNA_CNN_predict/
-├── data/          # 数据文件
-├── logs/          # 实验日志
-├── model/         # 模型定义
-├── results/       # 实验结果(XAI图表、CSV)
-├── script/
-└── utils/         # 工具函数
+├── data/          # Data files
+├── logs/          # Experiment logs
+├── model/         # Model definitions (v1-v4)
+├── results/       # Results (XAI figures, CSVs)
+├── script/        # Training/analysis scripts
+└── utils/         # Utility functions
 ```
 
-## 论文
+## Paper
 
-完整内容见 [`paper/paper.md`](paper/paper.md)
+Full paper (Chinese): [`paper/paper.md`](paper/paper.md) — 8 sections, 10 figures, 21 references (GB/T 7714 format).
