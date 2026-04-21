@@ -1,0 +1,11 @@
+metric,value
+model,v4_all
+n_high,496
+n_low,494
+mean_attr_high,-0.000089
+mean_attr_low,-0.000065
+tss_attr_high,-0.001735
+tss_attr_low,-0.001059
+n_key_regions,366
+top_region,9729-9735
+dl_ig_corr,0.9236

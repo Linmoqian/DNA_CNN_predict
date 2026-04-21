@@ -1,0 +1,7 @@
+channel,group,mean_signal,tss_mean
+H3K4me3,high,0.161603,1.618813
+H3K4me3,low,-0.159571,0.237115
+H3K27ac,high,0.050974,0.727853
+H3K27ac,low,-0.058680,0.099393
+DNase,high,0.114509,2.364808
+DNase,low,-0.102937,0.266663
