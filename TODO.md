@@ -28,6 +28,16 @@
 - [x] DeepLIFT vs IG 相关性 0.907，TSS 区域高/低表达归因 2.2x 差异
 - [x] CNN 卷积核 motif 提取（3 组滤波器权重）
 
+## modelv4 额外特征实验
+- [x] Phase A: 序列内在特征 (GC/CpG/k-mer) — utils/feature_engineering.py
+- [x] Phase A: 三分支模型 v4 — model/modelv4.py
+- [x] Phase A: v4 训练脚本 — script/train_v4.py
+- [x] Phase B: ENCODE 数据下载器 — utils/encode_downloader.py
+- [x] Phase B: 表观特征提取 — script/prepare_epigenomic.py
+- [x] 消融实验: baseline(0.796) / +seq(0.799) / +encode(0.825) / +all(0.827)
+- [x] 记录实验结果到 logs/experiments.csv
+- [x] 特征实验报告 — docs/v4_feature_report.md
+
 ## 待探索
 - [ ] 其他细胞系数据迁移学习
 - [ ] 多 seed 集成（seed=0/1/42 投票）

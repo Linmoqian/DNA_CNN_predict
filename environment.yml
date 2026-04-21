@@ -18,3 +18,4 @@ dependencies:
   - pip:
     - captum>=0.7.0
     - logomaker>=0.8
+    - pyBigWig>=0.3

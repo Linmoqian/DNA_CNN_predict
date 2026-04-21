@@ -3,3 +3,9 @@ timestamp,augment,amp,batch_size,lr,weight_decay,scheduler,best_epoch,final_epoc
 2026-04-19 15:55,True,True,32,5e-05,0.0001,ReduceLROnPlateau,33,35,35,0.0000,0.8131,0.8131,0.8137
 2026-04-19 16:41,5,True,True,True,5e-05,0.0001,0.8051,0.8050,0.8068
 2026-04-19 17:14,True,True,32,5e-05,0.0001,ReduceLROnPlateau,33,35,35,0.0000,0.8131,0.8131,0.8137
+2026-04-19 23:29,True,True,32,5e-05,0.0001,ReduceLROnPlateau,35,35,35,0.0000,0.7869,0.7869,0.7867
+2026-04-20 15:28,v4,baseline,True,True,True,32,5e-05,0.0001,ReduceLROnPlateau,31,35,35,0.7960,0.7959,0.7976,47258
+2026-04-20 16:34,v4,baseline,True,True,True,32,5e-05,0.0001,ReduceLROnPlateau,31,35,35,0.7960,0.7959,0.7976,47258
+2026-04-20 16:39,v4,seq,True,True,True,32,5e-05,0.0001,ReduceLROnPlateau,22,30,35,0.7990,0.7990,0.7988,91690
+2026-04-20 17:54,v4,encode,True,True,True,32,5e-05,0.0001,ReduceLROnPlateau,24,32,35,0.8253,0.8252,0.8299,55466
+2026-04-20 17:55,v4,all,True,True,True,32,5e-05,0.0001,ReduceLROnPlateau,32,35,35,0.8273,0.8274,0.8206,96778

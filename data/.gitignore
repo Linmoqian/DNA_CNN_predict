@@ -1,0 +1,5 @@
+data/encode/*.bigWig
+data/encode/*.gtf.gz
+data/epigenomic.pt
+data/seq_features_*.pt
+data/modelv4_*.pt
